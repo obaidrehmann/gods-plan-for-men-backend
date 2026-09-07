@@ -8,6 +8,11 @@ export interface IUser extends Document {
   password: string;
   role: UserRole;
   isActive: boolean;
+  phone: string;
+  country: string;
+  language: string;
+  bio: string;
+  avatarUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -43,6 +48,34 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    phone: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 40,
+    },
+    country: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 100,
+    },
+    language: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 50,
+    },
+    bio: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 500,
+    },
+    avatarUrl: {
+      type: String,
+      default: null,
     },
   },
   {

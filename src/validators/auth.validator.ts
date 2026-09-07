@@ -11,5 +11,26 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+export const updateProfileSchema = z
+  .object({
+    name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).optional(),
+    email: z.string().trim().email('Invalid email address').max(255).optional(),
+    phone: z.string().trim().max(40, 'Phone number is too long').optional(),
+    country: z.string().trim().max(100, 'Country is too long').optional(),
+    language: z.string().trim().max(50, 'Language is too long').optional(),
+    bio: z.string().trim().max(500, 'Bio must be 500 characters or less').optional(),
+  })
+  .refine(
+    (data) =>
+      data.name !== undefined ||
+      data.email !== undefined ||
+      data.phone !== undefined ||
+      data.country !== undefined ||
+      data.language !== undefined ||
+      data.bio !== undefined,
+    { message: 'At least one profile field is required' },
+  );
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

@@ -1,4 +1,4 @@
-import { absoluteMediaUrl } from '../middleware/upload';
+import { toStoredMediaPath } from '../middleware/upload';
 import { IBook, IChapter } from '../models/Book';
 
 function serializeChapter(chapter: IChapter) {
@@ -7,7 +7,8 @@ function serializeChapter(chapter: IChapter) {
     number: chapter.number,
     title: chapter.title,
     duration: chapter.duration,
-    audioUrl: absoluteMediaUrl(chapter.audioUrl) ?? chapter.audioUrl,
+    // Relative path only — clients prepend their API origin.
+    audioUrl: toStoredMediaPath(chapter.audioUrl) ?? chapter.audioUrl,
     order: chapter.order,
   };
 }
@@ -21,7 +22,7 @@ export function serializeBook(book: IBook) {
     author: book.author,
     description: book.description,
     shortBlurb: book.shortBlurb ?? '',
-    coverUrl: absoluteMediaUrl(book.coverUrl) ?? null,
+    coverUrl: toStoredMediaPath(book.coverUrl),
     isPublished: book.isPublished,
     isFeatured: book.isFeatured,
     chapters,

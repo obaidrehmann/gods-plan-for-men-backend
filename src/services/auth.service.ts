@@ -1,41 +1,42 @@
+import { avatarPublicPath, deleteUploadedFile } from '../middleware/upload';
 import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { signToken } from '../utils/jwt';
-import { LoginInput, RegisterInput } from '../validators/auth.validator';
-
-function toPublicUser(user: {
-  _id: { toString(): string };
-  name: string;
-  email: string;
-  role: 'user' | 'admin';
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    isActive: user.isActive,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  };
-}
+import { toPublicUser } from '../utils/userSerializer';
+import {
+  LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
+} from '../validators/auth.validator';
 
 export class AuthService {
   static async register(input: RegisterInput) {
-    const existing = await User.findOne({ email: input.email.toLowerCase() });
+    const email = input.email.toLowerCase();
+    const existing = await User.findOne({ email });
 
     if (existing) {
       throw new AppError('Email already registered', 409);
     }
 
-    const user = await User.create({
-      name: input.name,
-      email: input.email,
-      password: input.password,
-    });
+    let user;
+
+    try {
+      user = await User.create({
+        name: input.name,
+        email,
+        password: input.password,
+      });
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: number }).code === 11000
+      ) {
+        throw new AppError('Email already registered', 409);
+      }
+      throw error;
+    }
 
     const token = signToken({
       id: user.id,
@@ -92,6 +93,62 @@ export class AuthService {
 
     if (!user) {
       throw new AppError('User not found', 404);
+    }
+
+    return toPublicUser(user);
+  }
+
+  static async updateProfile(userId: string, input: UpdateProfileInput) {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (input.email !== undefined) {
+      const nextEmail = input.email.toLowerCase();
+      if (nextEmail !== user.email) {
+        const existing = await User.findOne({ email: nextEmail });
+        if (existing) {
+          throw new AppError('Email already registered', 409);
+        }
+        user.email = nextEmail;
+      }
+    }
+
+    if (input.name !== undefined) {
+      user.name = input.name;
+    }
+    if (input.phone !== undefined) {
+      user.phone = input.phone;
+    }
+    if (input.country !== undefined) {
+      user.country = input.country;
+    }
+    if (input.language !== undefined) {
+      user.language = input.language;
+    }
+    if (input.bio !== undefined) {
+      user.bio = input.bio;
+    }
+
+    await user.save();
+    return toPublicUser(user);
+  }
+
+  static async updateAvatar(userId: string, filename: string) {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const previousAvatar = user.avatarUrl;
+    user.avatarUrl = avatarPublicPath(filename);
+    await user.save();
+
+    if (previousAvatar && previousAvatar !== user.avatarUrl) {
+      deleteUploadedFile(previousAvatar);
     }
 
     return toPublicUser(user);

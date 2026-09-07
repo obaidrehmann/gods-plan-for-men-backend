@@ -4,7 +4,11 @@ import { AuthRequest } from '../types';
 import { sendSuccess } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
-import { LoginInput, RegisterInput } from '../validators/auth.validator';
+import {
+  LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
+} from '../validators/auth.validator';
 
 export class AuthController {
   static register = asyncHandler(async (req, res: Response) => {
@@ -29,5 +33,30 @@ export class AuthController {
 
     const user = await AuthService.getProfile(req.user.id);
     return sendSuccess(res, user, 'Profile fetched successfully');
+  });
+
+  static updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const user = await AuthService.updateProfile(
+      req.user.id,
+      req.body as UpdateProfileInput,
+    );
+    return sendSuccess(res, user, 'Profile updated successfully');
+  });
+
+  static updateAvatar = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    if (!req.file) {
+      throw new AppError('Avatar image is required', 400);
+    }
+
+    const user = await AuthService.updateAvatar(req.user.id, req.file.filename);
+    return sendSuccess(res, user, 'Avatar updated successfully');
   });
 }

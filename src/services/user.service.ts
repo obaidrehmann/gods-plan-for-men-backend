@@ -1,25 +1,6 @@
 import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
-
-function toPublicUser(user: {
-  _id: { toString(): string };
-  name: string;
-  email: string;
-  role: 'user' | 'admin';
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  return {
-    id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    isActive: user.isActive,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  };
-}
+import { toPublicUser } from '../utils/userSerializer';
 
 export class UserService {
   static async listUsers() {
