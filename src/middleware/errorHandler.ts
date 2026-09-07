@@ -26,6 +26,10 @@ export function errorHandler(
     message,
   };
 
+  if (err instanceof AppError && err.code) {
+    body.code = err.code;
+  }
+
   if (err instanceof AppError && err.errors) {
     body.errors = err.errors;
   }

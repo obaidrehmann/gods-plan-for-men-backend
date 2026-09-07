@@ -28,5 +28,6 @@ export interface ApiSuccessResponse<T = unknown> {
 export interface ApiErrorResponse {
   success: false;
   message: string;
+  code?: string;
   errors?: unknown;
 }

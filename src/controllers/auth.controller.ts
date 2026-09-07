@@ -17,6 +17,11 @@ export class AuthController {
     return sendSuccess(res, result, 'Logged in successfully');
   });
 
+  static adminLogin = asyncHandler(async (req, res: Response) => {
+    const result = await AuthService.adminLogin(req.body as LoginInput);
+    return sendSuccess(res, result, 'Admin logged in successfully');
+  });
+
   static me = asyncHandler(async (req: AuthRequest, res: Response) => {
     if (!req.user) {
       throw new AppError('Authentication required', 401);

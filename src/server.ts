@@ -2,9 +2,11 @@ import http from 'http';
 import app from './app';
 import { connectDatabase } from './config/database';
 import { env } from './config/env';
+import { seedAdminUser } from './config/seedAdmin';
 
 async function bootstrap(): Promise<void> {
   await connectDatabase();
+  await seedAdminUser();
 
   const server = http.createServer(app);
 

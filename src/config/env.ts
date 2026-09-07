@@ -10,6 +10,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   CORS_ORIGIN: z.string().default('*'),
+  PUBLIC_BASE_URL: z.string().url().default('http://127.0.0.1:3000'),
 });
 
 const parsed = envSchema.safeParse(process.env);

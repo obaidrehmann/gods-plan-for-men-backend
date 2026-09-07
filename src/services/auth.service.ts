@@ -57,7 +57,12 @@ export class AuthService {
     }
 
     if (!user.isActive) {
-      throw new AppError('Account is deactivated', 403);
+      throw new AppError(
+        'Your account has been blocked by admin',
+        403,
+        undefined,
+        'ACCOUNT_BLOCKED',
+      );
     }
 
     const token = signToken({
@@ -70,6 +75,16 @@ export class AuthService {
       token,
       user: toPublicUser(user),
     };
+  }
+
+  static async adminLogin(input: LoginInput) {
+    const result = await this.login(input);
+
+    if (result.user.role !== 'admin') {
+      throw new AppError('Admin access only', 403);
+    }
+
+    return result;
   }
 
   static async getProfile(userId: string) {
