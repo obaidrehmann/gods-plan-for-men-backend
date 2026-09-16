@@ -3,6 +3,7 @@ import { ReflectionController } from '../controllers/reflection.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
+  adminRespondSchema,
   createReflectionSchema,
   reflectionIdParamSchema,
   updateReflectionSchema,
@@ -12,6 +13,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get('/admin/stats', authorize('admin'), ReflectionController.adminStats);
 router.get('/admin', authorize('admin'), ReflectionController.listSubmitted);
 router.get(
   '/admin/:id',
@@ -19,7 +21,16 @@ router.get(
   validate(reflectionIdParamSchema, 'params'),
   ReflectionController.getSubmitted,
 );
+router.post(
+  '/admin/:id/respond',
+  authorize('admin'),
+  validate(reflectionIdParamSchema, 'params'),
+  validate(adminRespondSchema),
+  ReflectionController.respond,
+);
 
+router.get('/stats', ReflectionController.myStats);
+router.post('/mark-admin-replies-seen', ReflectionController.markAdminRepliesSeen);
 router.get('/', ReflectionController.listMine);
 router.post('/', validate(createReflectionSchema), ReflectionController.create);
 router.get(

@@ -1,3 +1,4 @@
+import { toStoredMediaPath } from '../middleware/upload';
 import { IReflection } from '../models/Reflection';
 
 type PopulatedUser = {
@@ -36,9 +37,21 @@ export function serializeReflection(reflection: IReflection) {
     body: reflection.body,
     status: reflection.status,
     submittedAt: reflection.submittedAt ?? null,
+    adminResponse: reflection.adminResponse ?? null,
+    adminRespondedAt: reflection.adminRespondedAt ?? null,
+    userSeenAdminResponseAt: reflection.userSeenAdminResponseAt ?? null,
+    hasUnreadAdminResponse: Boolean(
+      reflection.adminResponse?.trim() &&
+        (!reflection.userSeenAdminResponseAt ||
+          (reflection.adminRespondedAt &&
+            reflection.userSeenAdminResponseAt < reflection.adminRespondedAt)),
+    ),
     bookTitle: reflection.bookTitle,
     chapterTitle: reflection.chapterTitle,
     chapterNumber: reflection.chapterNumber,
+    chapterImageUrl: reflection.chapterImageUrl
+      ? toStoredMediaPath(reflection.chapterImageUrl)
+      : null,
     createdAt: reflection.createdAt,
     updatedAt: reflection.updatedAt,
     ...(user ? { user } : {}),

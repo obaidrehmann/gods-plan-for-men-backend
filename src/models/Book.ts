@@ -4,10 +4,18 @@ export interface IChapter {
   _id: Types.ObjectId;
   number: string;
   title: string;
+  /** Display length for audio chapters (e.g. "16:24"). Optional for text-only. */
   duration: string;
-  audioUrl: string;
+  /** Optional audio file path for audio / both books. */
+  audioUrl?: string;
+  /** Optional chapter artwork shown in player / reflections. */
+  imageUrl?: string;
+  /** Typed chapter body for readable / both books. */
+  textContent?: string;
   order: number;
 }
+
+export type BookMediaType = 'readable' | 'audio' | 'both';
 
 export interface IBook extends Document {
   title: string;
@@ -15,6 +23,13 @@ export interface IBook extends Document {
   description: string;
   shortBlurb?: string;
   coverUrl?: string;
+  /** Optional full-book PDF for readable / both books. */
+  pdfUrl?: string;
+  /** Price in major currency units (e.g. 19.99). Stored for Stripe-ready checkout later. */
+  price: number;
+  currency: string;
+  /** How the book can be consumed in the app. */
+  mediaType: BookMediaType;
   isPublished: boolean;
   isFeatured: boolean;
   chapters: Types.DocumentArray<IChapter>;
@@ -38,13 +53,23 @@ const chapterSchema = new Schema<IChapter>(
     },
     duration: {
       type: String,
-      required: true,
+      default: '',
       trim: true,
       maxlength: 20,
     },
     audioUrl: {
       type: String,
-      required: true,
+      default: '',
+      trim: true,
+    },
+    imageUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    textContent: {
+      type: String,
+      default: '',
       trim: true,
     },
     order: {
@@ -83,6 +108,30 @@ const bookSchema = new Schema<IBook>(
     coverUrl: {
       type: String,
       trim: true,
+    },
+    pdfUrl: {
+      type: String,
+      trim: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    currency: {
+      type: String,
+      required: true,
+      default: 'USD',
+      uppercase: true,
+      trim: true,
+      maxlength: 3,
+    },
+    mediaType: {
+      type: String,
+      enum: ['readable', 'audio', 'both'],
+      default: 'both',
+      required: true,
     },
     isPublished: {
       type: Boolean,

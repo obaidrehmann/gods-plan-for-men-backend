@@ -10,9 +10,14 @@ export interface IReflection extends Document {
   body: string;
   status: ReflectionStatus;
   submittedAt?: Date | null;
+  adminResponse?: string | null;
+  adminRespondedAt?: Date | null;
+  adminRespondedBy?: Types.ObjectId | null;
+  userSeenAdminResponseAt?: Date | null;
   bookTitle: string;
   chapterTitle: string;
   chapterNumber: string;
+  chapterImageUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +61,24 @@ const reflectionSchema = new Schema<IReflection>(
       type: Date,
       default: null,
     },
+    adminResponse: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    adminRespondedAt: {
+      type: Date,
+      default: null,
+    },
+    adminRespondedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    userSeenAdminResponseAt: {
+      type: Date,
+      default: null,
+    },
     bookTitle: {
       type: String,
       required: true,
@@ -73,6 +96,11 @@ const reflectionSchema = new Schema<IReflection>(
       required: true,
       trim: true,
       maxlength: 20,
+    },
+    chapterImageUrl: {
+      type: String,
+      default: null,
+      trim: true,
     },
   },
   {

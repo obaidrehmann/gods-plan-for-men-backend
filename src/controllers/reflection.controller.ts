@@ -9,6 +9,7 @@ import {
   serializeReflections,
 } from '../utils/reflectionSerializer';
 import {
+  AdminRespondInput,
   CreateReflectionInput,
   UpdateReflectionInput,
 } from '../validators/reflection.validator';
@@ -84,5 +85,49 @@ export class ReflectionController {
   static getSubmitted = asyncHandler(async (req: AuthRequest, res: Response) => {
     const reflection = await ReflectionService.getSubmittedForAdmin(getParam(req.params.id));
     return sendSuccess(res, serializeReflection(reflection), 'Reflection fetched successfully');
+  });
+
+  static respond = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const user = requireUser(req);
+    const reflection = await ReflectionService.respondAsAdmin(
+      getParam(req.params.id),
+      user.id,
+      req.body as AdminRespondInput,
+    );
+    return sendSuccess(
+      res,
+      serializeReflection(reflection),
+      'Response saved successfully',
+    );
+  });
+
+  static adminStats = asyncHandler(async (_req: AuthRequest, res: Response) => {
+    const pendingResponseCount = await ReflectionService.countPendingForAdmin();
+    return sendSuccess(
+      res,
+      { pendingResponseCount },
+      'Reflection stats fetched successfully',
+    );
+  });
+
+  static myStats = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const user = requireUser(req);
+    const unreadAdminResponseCount =
+      await ReflectionService.countUnreadAdminRepliesForUser(user.id);
+    return sendSuccess(
+      res,
+      { unreadAdminResponseCount },
+      'Reflection stats fetched successfully',
+    );
+  });
+
+  static markAdminRepliesSeen = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const user = requireUser(req);
+    const markedCount = await ReflectionService.markAdminRepliesSeen(user.id);
+    return sendSuccess(
+      res,
+      { markedCount, unreadAdminResponseCount: 0 },
+      'Admin replies marked as seen',
+    );
   });
 }

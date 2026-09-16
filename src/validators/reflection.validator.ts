@@ -37,5 +37,10 @@ export const updateReflectionSchema = z
     { message: 'bookId and chapterId must be provided together' },
   );
 
+export const adminRespondSchema = z.object({
+  response: z.string().trim().min(1).max(5000),
+});
+
 export type CreateReflectionInput = z.infer<typeof createReflectionSchema>;
 export type UpdateReflectionInput = z.infer<typeof updateReflectionSchema>;
+export type AdminRespondInput = z.infer<typeof adminRespondSchema>;

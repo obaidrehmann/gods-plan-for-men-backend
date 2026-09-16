@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
 import bookRoutes from './book.routes';
+import favoriteRoutes from './favorite.routes';
 import messageRoutes from './message.routes';
+import purchaseRoutes from './purchase.routes';
 import reflectionRoutes from './reflection.routes';
+import reviewRoutes from './bookReview.routes';
 import userRoutes from './user.routes';
 
 const router = Router();
@@ -21,6 +24,9 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/books', bookRoutes);
+router.use('/purchases', purchaseRoutes);
+router.use('/favorites', favoriteRoutes);
+router.use('/reviews', reviewRoutes);
 router.use('/reflections', reflectionRoutes);
 router.use('/messages', messageRoutes);
 

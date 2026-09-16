@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { BookController } from '../controllers/book.controller';
-import { authenticate, authorize } from '../middleware/auth';
-import { uploadAudio, uploadCover } from '../middleware/upload';
+import { authenticate, authorize, optionalAuthenticate } from '../middleware/auth';
+import { uploadChapterMedia, uploadCover, uploadPdf } from '../middleware/upload';
 import { validate } from '../middleware/validate';
 import {
   bookIdParamSchema,
@@ -14,7 +14,7 @@ import {
 
 const router = Router();
 
-router.get('/', BookController.list);
+router.get('/', optionalAuthenticate, BookController.list);
 router.get('/all', authenticate, authorize('admin'), BookController.listAll);
 
 router.post(
@@ -26,7 +26,12 @@ router.post(
   BookController.create,
 );
 
-router.get('/:id', validate(bookIdParamSchema, 'params'), BookController.getById);
+router.get(
+  '/:id',
+  optionalAuthenticate,
+  validate(bookIdParamSchema, 'params'),
+  BookController.getById,
+);
 
 router.patch(
   '/:id',
@@ -46,6 +51,23 @@ router.post(
   BookController.uploadCover,
 );
 
+router.post(
+  '/:id/pdf',
+  authenticate,
+  authorize('admin'),
+  validate(bookIdParamSchema, 'params'),
+  uploadPdf.single('pdf'),
+  BookController.uploadPdf,
+);
+
+router.delete(
+  '/:id/pdf',
+  authenticate,
+  authorize('admin'),
+  validate(bookIdParamSchema, 'params'),
+  BookController.removePdf,
+);
+
 router.delete(
   '/:id',
   authenticate,
@@ -59,7 +81,10 @@ router.post(
   authenticate,
   authorize('admin'),
   validate(bookIdParamSchema, 'params'),
-  uploadAudio.single('audio'),
+  uploadChapterMedia.fields([
+    { name: 'audio', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+  ]),
   validate(createChapterSchema),
   BookController.addChapter,
 );
@@ -69,7 +94,10 @@ router.patch(
   authenticate,
   authorize('admin'),
   validate(chapterIdParamSchema, 'params'),
-  uploadAudio.single('audio'),
+  uploadChapterMedia.fields([
+    { name: 'audio', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+  ]),
   validate(updateChapterSchema),
   BookController.updateChapter,
 );

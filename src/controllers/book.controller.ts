@@ -1,9 +1,12 @@
 import { Response } from 'express';
 import { BookService } from '../services/book.service';
+import { BookReviewService } from '../services/bookReview.service';
+import { FavoriteService } from '../services/favorite.service';
+import { PurchaseService } from '../services/purchase.service';
 import { AuthRequest } from '../types';
 import { sendSuccess } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
-import { serializeBook, serializeBooks } from '../utils/bookSerializer';
+import { serializeBook } from '../utils/bookSerializer';
 import { AppError } from '../utils/AppError';
 import {
   CreateBookInput,
@@ -17,20 +20,78 @@ function getParam(value: string | string[]): string {
 }
 
 export class BookController {
-  static list = asyncHandler(async (_req, res: Response) => {
+  static list = asyncHandler(async (req: AuthRequest, res: Response) => {
     const books = await BookService.listPublished();
-    return sendSuccess(res, serializeBooks(books), 'Books fetched successfully');
+    const ownedIds = req.user
+      ? await PurchaseService.listOwnedBookIds(req.user.id)
+      : new Set<string>();
+    const favoriteIds = req.user
+      ? await FavoriteService.listFavoriteBookIds(req.user.id)
+      : new Set<string>();
+    const ratingStats = await BookReviewService.getStatsForBooks(
+      books.map((book) => book._id.toString()),
+    );
+
+    const payload = books.map((book) => {
+      const id = book._id.toString();
+      const stats = ratingStats.get(id) ?? { averageRating: 0, ratingCount: 0 };
+      return serializeBook(book, {
+        isPurchased: ownedIds.has(id),
+        isFavorite: favoriteIds.has(id),
+        averageRating: stats.averageRating,
+        ratingCount: stats.ratingCount,
+      });
+    });
+
+    return sendSuccess(res, payload, 'Books fetched successfully');
   });
 
   static listAll = asyncHandler(async (_req, res: Response) => {
     const books = await BookService.listAll();
-    return sendSuccess(res, serializeBooks(books), 'All books fetched successfully');
+    const ratingStats = await BookReviewService.getStatsForBooks(
+      books.map((book) => book._id.toString()),
+    );
+    const payload = books.map((book) => {
+      const id = book._id.toString();
+      const stats = ratingStats.get(id) ?? { averageRating: 0, ratingCount: 0 };
+      return serializeBook(book, {
+        isPurchased: true,
+        averageRating: stats.averageRating,
+        ratingCount: stats.ratingCount,
+      });
+    });
+    return sendSuccess(res, payload, 'All books fetched successfully');
   });
 
   static getById = asyncHandler(async (req: AuthRequest, res: Response) => {
     const isAdmin = req.user?.role === 'admin';
     const book = await BookService.getById(getParam(req.params.id), isAdmin);
-    return sendSuccess(res, serializeBook(book), 'Book fetched successfully');
+    const bookId = book._id.toString();
+    const isPurchased =
+      isAdmin ||
+      (req.user ? await PurchaseService.hasPurchased(req.user.id, bookId) : false);
+    const isFavorite = req.user
+      ? await FavoriteService.isFavorite(req.user.id, bookId)
+      : false;
+
+    const stats = await BookReviewService.getStatsForBook(bookId);
+    const mine = req.user
+      ? await BookReviewService.getMineForBook(req.user.id, bookId)
+      : null;
+
+    return sendSuccess(
+      res,
+      serializeBook(book, {
+        isPurchased,
+        isFavorite,
+        averageRating: stats.averageRating,
+        ratingCount: stats.ratingCount,
+        myReview: mine
+          ? { id: mine._id.toString(), rating: mine.rating, comment: mine.comment ?? '' }
+          : null,
+      }),
+      'Book fetched successfully',
+    );
   });
 
   static create = asyncHandler(async (req, res: Response) => {
@@ -56,32 +117,55 @@ export class BookController {
     return sendSuccess(res, serializeBook(book), 'Cover updated successfully');
   });
 
+  static uploadPdf = asyncHandler(async (req, res: Response) => {
+    if (!req.file) {
+      throw new AppError('PDF file is required', 400);
+    }
+
+    const book = await BookService.updatePdf(getParam(req.params.id), req.file.filename);
+    return sendSuccess(res, serializeBook(book, { isPurchased: true }), 'PDF updated successfully');
+  });
+
+  static removePdf = asyncHandler(async (req, res: Response) => {
+    const book = await BookService.removePdf(getParam(req.params.id));
+    return sendSuccess(res, serializeBook(book, { isPurchased: true }), 'PDF removed successfully');
+  });
+
   static remove = asyncHandler(async (req, res: Response) => {
     await BookService.remove(getParam(req.params.id));
     return sendSuccess(res, null, 'Book deleted successfully');
   });
 
   static addChapter = asyncHandler(async (req, res: Response) => {
-    if (!req.file) {
-      throw new AppError('Chapter audio file is required', 400);
-    }
-
+    const files = req.files as
+      | { [fieldname: string]: Express.Multer.File[] }
+      | undefined;
     const book = await BookService.addChapter(
       getParam(req.params.id),
       req.body as CreateChapterInput,
-      req.file.filename,
+      files?.audio?.[0]?.filename,
+      files?.image?.[0]?.filename,
     );
-    return sendSuccess(res, serializeBook(book), 'Chapter added successfully', 201);
+    return sendSuccess(
+      res,
+      serializeBook(book, { isPurchased: true }),
+      'Chapter added successfully',
+      201,
+    );
   });
 
   static updateChapter = asyncHandler(async (req, res: Response) => {
+    const files = req.files as
+      | { [fieldname: string]: Express.Multer.File[] }
+      | undefined;
     const book = await BookService.updateChapter(
       getParam(req.params.id),
       getParam(req.params.chapterId),
       req.body as UpdateChapterInput,
-      req.file?.filename,
+      files?.audio?.[0]?.filename,
+      files?.image?.[0]?.filename,
     );
-    return sendSuccess(res, serializeBook(book), 'Chapter updated successfully');
+    return sendSuccess(res, serializeBook(book, { isPurchased: true }), 'Chapter updated successfully');
   });
 
   static removeChapter = asyncHandler(async (req, res: Response) => {
@@ -89,6 +173,6 @@ export class BookController {
       getParam(req.params.id),
       getParam(req.params.chapterId),
     );
-    return sendSuccess(res, serializeBook(book), 'Chapter deleted successfully');
+    return sendSuccess(res, serializeBook(book, { isPurchased: true }), 'Chapter deleted successfully');
   });
 }

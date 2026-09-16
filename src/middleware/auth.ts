@@ -50,6 +50,38 @@ export async function authenticate(
   }
 }
 
+/** Attaches req.user when a valid token is present; continues as guest otherwise. */
+export async function optionalAuthenticate(
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const header = req.headers.authorization;
+
+    if (!header?.startsWith('Bearer ')) {
+      next();
+      return;
+    }
+
+    const token = header.slice(7);
+    const payload = verifyToken(token);
+    const user = await User.findById(payload.sub);
+
+    if (user?.isActive) {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+    }
+
+    next();
+  } catch {
+    next();
+  }
+}
+
 export function authorize(...roles: Array<'user' | 'admin'>) {
   return (req: AuthRequest, _res: Response, next: NextFunction): void => {
     if (!req.user) {
