@@ -64,6 +64,10 @@ API base URL: `http://localhost:3000/api/v1`
 - `POST /api/v1/auth/register` — `{ name, email, password }`
 - `POST /api/v1/auth/login` — `{ email, password }`
 - `GET /api/v1/auth/me` — Bearer token required
+- `PATCH /api/v1/auth/me` — update profile fields
+- `POST /api/v1/auth/me/avatar` — multipart avatar upload
+- `PATCH /api/v1/auth/me/password` — `{ currentPassword, newPassword }`
+- `PATCH /api/v1/auth/me/security` — `{ loginAlertsEnabled }`
 
 ### Books
 - `GET /api/v1/books` — published books

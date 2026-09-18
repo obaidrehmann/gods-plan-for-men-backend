@@ -5,9 +5,11 @@ import { sendSuccess } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
 import {
+  ChangePasswordInput,
   LoginInput,
   RegisterInput,
   UpdateProfileInput,
+  UpdateSecurityInput,
 } from '../validators/auth.validator';
 
 export class AuthController {
@@ -58,5 +60,29 @@ export class AuthController {
 
     const user = await AuthService.updateAvatar(req.user.id, req.file.filename);
     return sendSuccess(res, user, 'Avatar updated successfully');
+  });
+
+  static changePassword = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const user = await AuthService.changePassword(
+      req.user.id,
+      req.body as ChangePasswordInput,
+    );
+    return sendSuccess(res, user, 'Password updated successfully');
+  });
+
+  static updateSecurity = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const user = await AuthService.updateSecurity(
+      req.user.id,
+      req.body as UpdateSecurityInput,
+    );
+    return sendSuccess(res, user, 'Security settings updated successfully');
   });
 }

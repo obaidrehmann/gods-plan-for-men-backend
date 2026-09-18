@@ -31,6 +31,24 @@ export const updateProfileSchema = z
     { message: 'At least one profile field is required' },
   );
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(128),
+});
+
+export const updateSecuritySchema = z
+  .object({
+    loginAlertsEnabled: z.boolean().optional(),
+  })
+  .refine((data) => data.loginAlertsEnabled !== undefined, {
+    message: 'At least one security field is required',
+  });
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type UpdateSecurityInput = z.infer<typeof updateSecuritySchema>;

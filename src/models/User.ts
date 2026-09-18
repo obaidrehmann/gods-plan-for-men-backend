@@ -13,6 +13,8 @@ export interface IUser extends Document {
   language: string;
   bio: string;
   avatarUrl?: string | null;
+  passwordChangedAt: Date;
+  loginAlertsEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -77,6 +79,14 @@ const userSchema = new Schema<IUser>(
       type: String,
       default: null,
     },
+    passwordChangedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    loginAlertsEnabled: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -95,6 +105,7 @@ userSchema.pre('save', async function hashPassword() {
   }
 
   this.password = await bcrypt.hash(this.password, 12);
+  this.passwordChangedAt = new Date();
 });
 
 userSchema.methods.comparePassword = async function comparePassword(

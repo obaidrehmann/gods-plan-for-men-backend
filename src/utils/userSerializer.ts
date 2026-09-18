@@ -12,6 +12,8 @@ type PublicUserSource = Pick<
   | 'language'
   | 'bio'
   | 'avatarUrl'
+  | 'passwordChangedAt'
+  | 'loginAlertsEnabled'
   | 'createdAt'
   | 'updatedAt'
 > & {
@@ -31,6 +33,8 @@ export function toPublicUser(user: PublicUserSource) {
     bio: user.bio ?? '',
     // Relative path only — clients prepend their API origin.
     avatarUrl: toStoredMediaPath(user.avatarUrl),
+    passwordChangedAt: user.passwordChangedAt ?? user.createdAt,
+    loginAlertsEnabled: user.loginAlertsEnabled ?? false,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

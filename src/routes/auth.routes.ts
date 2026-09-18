@@ -4,9 +4,11 @@ import { authenticate } from '../middleware/auth';
 import { uploadAvatar } from '../middleware/upload';
 import { validate } from '../middleware/validate';
 import {
+  changePasswordSchema,
   loginSchema,
   registerSchema,
   updateProfileSchema,
+  updateSecuritySchema,
 } from '../validators/auth.validator';
 
 const router = Router();
@@ -21,6 +23,18 @@ router.post(
   authenticate,
   uploadAvatar.single('avatar'),
   AuthController.updateAvatar,
+);
+router.patch(
+  '/me/password',
+  authenticate,
+  validate(changePasswordSchema),
+  AuthController.changePassword,
+);
+router.patch(
+  '/me/security',
+  authenticate,
+  validate(updateSecuritySchema),
+  AuthController.updateSecurity,
 );
 
 export default router;

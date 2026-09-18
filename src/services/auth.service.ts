@@ -4,9 +4,11 @@ import { AppError } from '../utils/AppError';
 import { signToken } from '../utils/jwt';
 import { toPublicUser } from '../utils/userSerializer';
 import {
+  ChangePasswordInput,
   LoginInput,
   RegisterInput,
   UpdateProfileInput,
+  UpdateSecurityInput,
 } from '../validators/auth.validator';
 
 export class AuthService {
@@ -151,6 +153,43 @@ export class AuthService {
       deleteUploadedFile(previousAvatar);
     }
 
+    return toPublicUser(user);
+  }
+
+  static async changePassword(userId: string, input: ChangePasswordInput) {
+    const user = await User.findById(userId).select('+password');
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const matches = await user.comparePassword(input.currentPassword);
+    if (!matches) {
+      throw new AppError('Current password is incorrect', 400);
+    }
+
+    if (input.currentPassword === input.newPassword) {
+      throw new AppError('New password must be different from the current password', 400);
+    }
+
+    user.password = input.newPassword;
+    await user.save();
+
+    return toPublicUser(user);
+  }
+
+  static async updateSecurity(userId: string, input: UpdateSecurityInput) {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (input.loginAlertsEnabled !== undefined) {
+      user.loginAlertsEnabled = input.loginAlertsEnabled;
+    }
+
+    await user.save();
     return toPublicUser(user);
   }
 }
