@@ -4,6 +4,7 @@ import bookRoutes from './book.routes';
 import favoriteRoutes from './favorite.routes';
 import messageRoutes from './message.routes';
 import purchaseRoutes from './purchase.routes';
+import reflectionPromptRoutes from './reflectionPrompt.routes';
 import reflectionRoutes from './reflection.routes';
 import reviewRoutes from './bookReview.routes';
 import userRoutes from './user.routes';
@@ -28,6 +29,7 @@ router.use('/purchases', purchaseRoutes);
 router.use('/favorites', favoriteRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/reflections', reflectionRoutes);
+router.use('/reflection-prompts', reflectionPromptRoutes);
 router.use('/messages', messageRoutes);
 
 export default router;

@@ -1,5 +1,5 @@
 import { toStoredMediaPath } from '../middleware/upload';
-import { IReflection } from '../models/Reflection';
+import { IReflection, IReflectionMessage } from '../models/Reflection';
 
 type PopulatedUser = {
   _id: { toString(): string };
@@ -17,6 +17,64 @@ function isPopulatedUser(value: unknown): value is PopulatedUser {
   );
 }
 
+export type SerializedReflectionMessage = {
+  id: string;
+  role: 'admin' | 'user';
+  body: string;
+  authorId: string;
+  createdAt: Date;
+};
+
+function getConversationMessages(reflection: IReflection): SerializedReflectionMessage[] {
+  const stored = (reflection.messages ?? []).map((message: IReflectionMessage) => ({
+    id: message._id.toString(),
+    role: message.role,
+    body: message.body,
+    authorId: message.authorId.toString(),
+    createdAt: message.createdAt,
+  }));
+
+  if (stored.length > 0) {
+    return stored.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }
+
+  // Legacy single-reply documents
+  if (reflection.adminResponse?.trim()) {
+    return [
+      {
+        id: `legacy-${reflection._id.toString()}`,
+        role: 'admin',
+        body: reflection.adminResponse,
+        authorId: reflection.adminRespondedBy?.toString() ?? '',
+        createdAt: reflection.adminRespondedAt ?? reflection.updatedAt,
+      },
+    ];
+  }
+
+  return [];
+}
+
+function getLastAdminMessage(messages: SerializedReflectionMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === 'admin') {
+      return messages[index];
+    }
+  }
+  return null;
+}
+
+function hasUnreadAdminResponse(
+  messages: SerializedReflectionMessage[],
+  userSeenAdminResponseAt?: Date | null,
+) {
+  const lastAdmin = getLastAdminMessage(messages);
+  if (!lastAdmin) return false;
+  if (!userSeenAdminResponseAt) return true;
+  return new Date(userSeenAdminResponseAt) < new Date(lastAdmin.createdAt);
+}
+
 export function serializeReflection(reflection: IReflection) {
   const user = isPopulatedUser(reflection.userId)
     ? {
@@ -25,6 +83,10 @@ export function serializeReflection(reflection: IReflection) {
         email: reflection.userId.email,
       }
     : undefined;
+
+  const messages = getConversationMessages(reflection);
+  const lastAdmin = getLastAdminMessage(messages);
+  const lastMessage = messages[messages.length - 1] ?? null;
 
   return {
     id: reflection._id.toString(),
@@ -37,15 +99,17 @@ export function serializeReflection(reflection: IReflection) {
     body: reflection.body,
     status: reflection.status,
     submittedAt: reflection.submittedAt ?? null,
-    adminResponse: reflection.adminResponse ?? null,
-    adminRespondedAt: reflection.adminRespondedAt ?? null,
+    messages,
+    adminResponse: lastAdmin?.body ?? null,
+    adminRespondedAt: lastAdmin?.createdAt ?? null,
     userSeenAdminResponseAt: reflection.userSeenAdminResponseAt ?? null,
-    hasUnreadAdminResponse: Boolean(
-      reflection.adminResponse?.trim() &&
-        (!reflection.userSeenAdminResponseAt ||
-          (reflection.adminRespondedAt &&
-            reflection.userSeenAdminResponseAt < reflection.adminRespondedAt)),
+    hasUnreadAdminResponse: hasUnreadAdminResponse(
+      messages,
+      reflection.userSeenAdminResponseAt,
     ),
+    awaitingAdminReply:
+      reflection.status === 'submitted' &&
+      (!lastMessage || lastMessage.role === 'user'),
     bookTitle: reflection.bookTitle,
     chapterTitle: reflection.chapterTitle,
     chapterNumber: reflection.chapterNumber,

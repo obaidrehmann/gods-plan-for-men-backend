@@ -4,6 +4,21 @@ import { AppError } from '../utils/AppError';
 
 type RequestPart = 'body' | 'query' | 'params';
 
+function assignValidated(req: Request, part: RequestPart, data: unknown) {
+  // Express 5 exposes req.query as a getter-only property.
+  if (part === 'query') {
+    Object.defineProperty(req, 'query', {
+      value: data,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+    return;
+  }
+
+  req[part] = data as Request[typeof part];
+}
+
 export const validate =
   (schema: ZodSchema, part: RequestPart = 'body') =>
   (req: Request, _res: Response, next: NextFunction): void => {
@@ -14,6 +29,6 @@ export const validate =
       return;
     }
 
-    req[part] = result.data;
+    assignValidated(req, part, result.data);
     next();
   };

@@ -1,6 +1,15 @@
 import { Document, Schema, Types, model } from 'mongoose';
 
 export type ReflectionStatus = 'private' | 'submitted';
+export type ReflectionMessageRole = 'admin' | 'user';
+
+export interface IReflectionMessage {
+  _id: Types.ObjectId;
+  role: ReflectionMessageRole;
+  body: string;
+  authorId: Types.ObjectId;
+  createdAt: Date;
+}
 
 export interface IReflection extends Document {
   userId: Types.ObjectId;
@@ -10,8 +19,12 @@ export interface IReflection extends Document {
   body: string;
   status: ReflectionStatus;
   submittedAt?: Date | null;
+  messages: Types.DocumentArray<IReflectionMessage>;
+  /** @deprecated Prefer messages[]; kept for legacy documents */
   adminResponse?: string | null;
+  /** @deprecated Prefer messages[]; kept for legacy documents */
   adminRespondedAt?: Date | null;
+  /** @deprecated Prefer messages[]; kept for legacy documents */
   adminRespondedBy?: Types.ObjectId | null;
   userSeenAdminResponseAt?: Date | null;
   bookTitle: string;
@@ -21,6 +34,32 @@ export interface IReflection extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const reflectionMessageSchema = new Schema<IReflectionMessage>(
+  {
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      required: true,
+    },
+    body: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 5000,
+    },
+    authorId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true },
+);
 
 const reflectionSchema = new Schema<IReflection>(
   {
@@ -60,6 +99,10 @@ const reflectionSchema = new Schema<IReflection>(
     submittedAt: {
       type: Date,
       default: null,
+    },
+    messages: {
+      type: [reflectionMessageSchema],
+      default: [],
     },
     adminResponse: {
       type: String,

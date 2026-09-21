@@ -6,6 +6,7 @@ import {
   adminRespondSchema,
   createReflectionSchema,
   reflectionIdParamSchema,
+  reflectionMessageSchema,
   updateReflectionSchema,
 } from '../validators/reflection.validator';
 
@@ -53,6 +54,12 @@ router.post(
   '/:id/submit',
   validate(reflectionIdParamSchema, 'params'),
   ReflectionController.submit,
+);
+router.post(
+  '/:id/messages',
+  validate(reflectionIdParamSchema, 'params'),
+  validate(reflectionMessageSchema),
+  ReflectionController.replyAsUser,
 );
 
 export default router;

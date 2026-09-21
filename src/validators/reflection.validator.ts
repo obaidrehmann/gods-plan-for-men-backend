@@ -38,9 +38,20 @@ export const updateReflectionSchema = z
   );
 
 export const adminRespondSchema = z.object({
-  response: z.string().trim().min(1).max(5000),
+  body: z.string().trim().min(1).max(5000).optional(),
+  response: z.string().trim().min(1).max(5000).optional(),
+}).refine((value) => Boolean(value.body?.trim() || value.response?.trim()), {
+  message: 'Message body is required',
+});
+
+export const reflectionMessageSchema = z.object({
+  body: z.string().trim().min(1).max(5000),
 });
 
 export type CreateReflectionInput = z.infer<typeof createReflectionSchema>;
 export type UpdateReflectionInput = z.infer<typeof updateReflectionSchema>;
 export type AdminRespondInput = z.infer<typeof adminRespondSchema>;
+export type ReflectionMessageInput = {
+  body?: string;
+  response?: string;
+};

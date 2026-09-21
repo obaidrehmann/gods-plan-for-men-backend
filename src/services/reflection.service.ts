@@ -4,8 +4,8 @@ import { Book } from '../models/Book';
 import { IReflection, Reflection } from '../models/Reflection';
 import { AppError } from '../utils/AppError';
 import {
-  AdminRespondInput,
   CreateReflectionInput,
+  ReflectionMessageInput,
   UpdateReflectionInput,
 } from '../validators/reflection.validator';
 
@@ -62,6 +62,52 @@ export class ReflectionService {
     return reflection;
   }
 
+  /** Move legacy adminResponse into messages[] once, so conversation is canonical. */
+  private static migrateLegacyMessages(reflection: IReflection) {
+    if ((reflection.messages?.length ?? 0) > 0) {
+      return;
+    }
+
+    if (!reflection.adminResponse?.trim()) {
+      return;
+    }
+
+    reflection.messages.push({
+      role: 'admin',
+      body: reflection.adminResponse,
+      authorId:
+        reflection.adminRespondedBy ??
+        (reflection.userId as Types.ObjectId),
+      createdAt: reflection.adminRespondedAt ?? reflection.updatedAt ?? new Date(),
+    } as never);
+  }
+
+  private static appendMessage(
+    reflection: IReflection,
+    role: 'admin' | 'user',
+    authorId: string,
+    body: string,
+  ) {
+    this.migrateLegacyMessages(reflection);
+
+    const now = new Date();
+    reflection.messages.push({
+      role,
+      body,
+      authorId: new Types.ObjectId(authorId),
+      createdAt: now,
+    } as never);
+
+    if (role === 'admin') {
+      reflection.adminResponse = body;
+      reflection.adminRespondedAt = now;
+      reflection.adminRespondedBy = new Types.ObjectId(authorId);
+      reflection.userSeenAdminResponseAt = null;
+    }
+
+    return now;
+  }
+
   static async listMine(userId: string) {
     return Reflection.find({ userId }).sort({ createdAt: -1 });
   }
@@ -81,6 +127,7 @@ export class ReflectionService {
       title,
       body: input.body,
       status: 'private',
+      messages: [],
       bookTitle: chapter.bookTitle,
       chapterTitle: chapter.chapterTitle,
       chapterNumber: chapter.chapterNumber,
@@ -156,7 +203,7 @@ export class ReflectionService {
   static async respondAsAdmin(
     id: string,
     adminId: string,
-    input: AdminRespondInput,
+    input: ReflectionMessageInput,
   ) {
     const reflection = await Reflection.findOne({
       _id: id,
@@ -167,45 +214,108 @@ export class ReflectionService {
       throw new AppError('Reflection not found', 404);
     }
 
-    reflection.adminResponse = input.response;
-    reflection.adminRespondedAt = new Date();
-    reflection.adminRespondedBy = new Types.ObjectId(adminId);
-    reflection.userSeenAdminResponseAt = null;
+    this.appendMessage(reflection, 'admin', adminId, input.body ?? input.response ?? '');
+    await reflection.save();
+    return reflection;
+  }
+
+  static async replyAsUser(id: string, userId: string, input: ReflectionMessageInput) {
+    const reflection = await this.getOwned(id, userId);
+
+    if (reflection.status !== 'submitted') {
+      throw new AppError('Only submitted reflections can receive replies', 400);
+    }
+
+    this.appendMessage(
+      reflection,
+      'user',
+      userId,
+      input.body ?? input.response ?? '',
+    );
     await reflection.save();
     return reflection;
   }
 
   static async countPendingForAdmin() {
-    return Reflection.countDocuments({
-      status: 'submitted',
-      $or: [{ adminResponse: null }, { adminResponse: '' }],
-    });
+    const submitted = await Reflection.find({ status: 'submitted' }).select(
+      'messages adminResponse',
+    );
+
+    return submitted.filter((reflection) => {
+      const messages = reflection.messages ?? [];
+      if (messages.length === 0) {
+        return !reflection.adminResponse?.trim();
+      }
+      return messages[messages.length - 1].role === 'user';
+    }).length;
   }
 
   static async countUnreadAdminRepliesForUser(userId: string) {
-    return Reflection.countDocuments({
+    const reflections = await Reflection.find({
       userId,
       status: 'submitted',
-      adminResponse: { $nin: [null, ''] },
-      $or: [
-        { userSeenAdminResponseAt: null },
-        { $expr: { $lt: ['$userSeenAdminResponseAt', '$adminRespondedAt'] } },
-      ],
-    });
+    }).select('messages adminResponse adminRespondedAt userSeenAdminResponseAt');
+
+    return reflections.filter((reflection) => {
+      const messages = reflection.messages ?? [];
+      let lastAdminAt: Date | null = null;
+
+      if (messages.length > 0) {
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          if (messages[index].role === 'admin') {
+            lastAdminAt = messages[index].createdAt;
+            break;
+          }
+        }
+      } else if (reflection.adminResponse?.trim()) {
+        lastAdminAt = reflection.adminRespondedAt ?? null;
+      }
+
+      if (!lastAdminAt) return false;
+      if (!reflection.userSeenAdminResponseAt) return true;
+      return reflection.userSeenAdminResponseAt < lastAdminAt;
+    }).length;
   }
 
   static async markAdminRepliesSeen(userId: string) {
     const now = new Date();
+    const reflections = await Reflection.find({
+      userId,
+      status: 'submitted',
+    }).select('_id messages adminResponse adminRespondedAt userSeenAdminResponseAt');
+
+    const idsToUpdate: Types.ObjectId[] = [];
+
+    for (const reflection of reflections) {
+      const messages = reflection.messages ?? [];
+      let lastAdminAt: Date | null = null;
+
+      if (messages.length > 0) {
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          if (messages[index].role === 'admin') {
+            lastAdminAt = messages[index].createdAt;
+            break;
+          }
+        }
+      } else if (reflection.adminResponse?.trim()) {
+        lastAdminAt = reflection.adminRespondedAt ?? null;
+      }
+
+      if (!lastAdminAt) continue;
+      if (
+        !reflection.userSeenAdminResponseAt ||
+        reflection.userSeenAdminResponseAt < lastAdminAt
+      ) {
+        idsToUpdate.push(reflection._id as Types.ObjectId);
+      }
+    }
+
+    if (!idsToUpdate.length) {
+      return 0;
+    }
+
     const result = await Reflection.updateMany(
-      {
-        userId,
-        status: 'submitted',
-        adminResponse: { $nin: [null, ''] },
-        $or: [
-          { userSeenAdminResponseAt: null },
-          { $expr: { $lt: ['$userSeenAdminResponseAt', '$adminRespondedAt'] } },
-        ],
-      },
+      { _id: { $in: idsToUpdate } },
       { $set: { userSeenAdminResponseAt: now } },
     );
     return result.modifiedCount;

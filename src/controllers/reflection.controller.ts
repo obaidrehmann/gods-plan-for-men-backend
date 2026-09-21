@@ -11,6 +11,7 @@ import {
 import {
   AdminRespondInput,
   CreateReflectionInput,
+  ReflectionMessageInput,
   UpdateReflectionInput,
 } from '../validators/reflection.validator';
 
@@ -98,6 +99,20 @@ export class ReflectionController {
       res,
       serializeReflection(reflection),
       'Response saved successfully',
+    );
+  });
+
+  static replyAsUser = asyncHandler(async (req: AuthRequest, res: Response) => {
+    const user = requireUser(req);
+    const reflection = await ReflectionService.replyAsUser(
+      getParam(req.params.id),
+      user.id,
+      req.body as ReflectionMessageInput,
+    );
+    return sendSuccess(
+      res,
+      serializeReflection(reflection),
+      'Reply sent successfully',
     );
   });
 
