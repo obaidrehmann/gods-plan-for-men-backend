@@ -84,32 +84,6 @@ export class BookService {
     return book;
   }
 
-  static async updatePdf(id: string, pdfFilename: string) {
-    const book = await Book.findById(id);
-
-    if (!book) {
-      throw new AppError('Book not found', 404);
-    }
-
-    deleteUploadedFile(book.pdfUrl);
-    book.pdfUrl = pdfPublicPath(pdfFilename);
-    await book.save();
-    return book;
-  }
-
-  static async removePdf(id: string) {
-    const book = await Book.findById(id);
-
-    if (!book) {
-      throw new AppError('Book not found', 404);
-    }
-
-    deleteUploadedFile(book.pdfUrl);
-    book.pdfUrl = undefined;
-    await book.save();
-    return book;
-  }
-
   static async remove(id: string) {
     const book = await Book.findById(id);
 
@@ -118,10 +92,10 @@ export class BookService {
     }
 
     deleteUploadedFile(book.coverUrl);
-    deleteUploadedFile(book.pdfUrl);
     for (const chapter of book.chapters) {
       deleteUploadedFile(chapter.audioUrl);
       deleteUploadedFile(chapter.imageUrl);
+      deleteUploadedFile(chapter.pdfUrl);
     }
 
     await PurchaseService.removeForBook(book._id.toString());
@@ -136,6 +110,7 @@ export class BookService {
     input: CreateChapterInput,
     audioFilename?: string,
     imageFilename?: string,
+    pdfFilename?: string,
   ) {
     const book = await Book.findById(bookId);
 
@@ -145,18 +120,19 @@ export class BookService {
 
     const textContent = input.textContent?.trim() ?? '';
     const hasAudio = Boolean(audioFilename);
+    const hasPdf = Boolean(pdfFilename);
     const mediaType = book.mediaType ?? 'both';
 
     if (mediaType === 'audio' && !hasAudio) {
       throw new AppError('Chapter audio file is required for audio books', 400);
     }
 
-    if (mediaType === 'readable' && !textContent) {
-      throw new AppError('Chapter text is required for readable books', 400);
+    if (mediaType === 'readable' && !textContent && !hasPdf) {
+      throw new AppError('Chapter text and/or PDF is required for readable books', 400);
     }
 
-    if (mediaType === 'both' && !hasAudio && !textContent) {
-      throw new AppError('Provide chapter audio and/or chapter text', 400);
+    if (mediaType === 'both' && !hasAudio && !textContent && !hasPdf) {
+      throw new AppError('Provide chapter audio, text, and/or PDF', 400);
     }
 
     const order = input.order ?? book.chapters.length;
@@ -167,6 +143,7 @@ export class BookService {
       audioUrl: audioFilename ? audioPublicPath(audioFilename) : '',
       imageUrl: imageFilename ? chapterImagePublicPath(imageFilename) : '',
       textContent,
+      pdfUrl: pdfFilename ? pdfPublicPath(pdfFilename) : '',
       order,
     } as IBook['chapters'][number]);
 
@@ -180,6 +157,7 @@ export class BookService {
     input: UpdateChapterInput,
     audioFilename?: string,
     imageFilename?: string,
+    pdfFilename?: string,
   ) {
     const book = await Book.findById(bookId);
 
@@ -209,6 +187,11 @@ export class BookService {
       chapter.imageUrl = chapterImagePublicPath(imageFilename);
     }
 
+    if (pdfFilename) {
+      deleteUploadedFile(chapter.pdfUrl);
+      chapter.pdfUrl = pdfPublicPath(pdfFilename);
+    }
+
     await book.save();
     return book;
   }
@@ -228,6 +211,7 @@ export class BookService {
 
     deleteUploadedFile(chapter.audioUrl);
     deleteUploadedFile(chapter.imageUrl);
+    deleteUploadedFile(chapter.pdfUrl);
     chapter.deleteOne();
     await book.save();
     return book;

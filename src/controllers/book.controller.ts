@@ -117,20 +117,6 @@ export class BookController {
     return sendSuccess(res, serializeBook(book), 'Cover updated successfully');
   });
 
-  static uploadPdf = asyncHandler(async (req, res: Response) => {
-    if (!req.file) {
-      throw new AppError('PDF file is required', 400);
-    }
-
-    const book = await BookService.updatePdf(getParam(req.params.id), req.file.filename);
-    return sendSuccess(res, serializeBook(book, { isPurchased: true }), 'PDF updated successfully');
-  });
-
-  static removePdf = asyncHandler(async (req, res: Response) => {
-    const book = await BookService.removePdf(getParam(req.params.id));
-    return sendSuccess(res, serializeBook(book, { isPurchased: true }), 'PDF removed successfully');
-  });
-
   static remove = asyncHandler(async (req, res: Response) => {
     await BookService.remove(getParam(req.params.id));
     return sendSuccess(res, null, 'Book deleted successfully');
@@ -145,6 +131,7 @@ export class BookController {
       req.body as CreateChapterInput,
       files?.audio?.[0]?.filename,
       files?.image?.[0]?.filename,
+      files?.pdf?.[0]?.filename,
     );
     return sendSuccess(
       res,
@@ -164,6 +151,7 @@ export class BookController {
       req.body as UpdateChapterInput,
       files?.audio?.[0]?.filename,
       files?.image?.[0]?.filename,
+      files?.pdf?.[0]?.filename,
     );
     return sendSuccess(res, serializeBook(book, { isPurchased: true }), 'Chapter updated successfully');
   });

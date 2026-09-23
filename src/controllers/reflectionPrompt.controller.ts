@@ -43,6 +43,15 @@ export class ReflectionPromptController {
     );
   });
 
+  static listActive = asyncHandler(async (_req: AuthRequest, res: Response) => {
+    const prompts = await ReflectionPromptService.listActive();
+    return sendSuccess(
+      res,
+      serializeReflectionPrompts(prompts),
+      'Active reflection prompts fetched successfully',
+    );
+  });
+
   static create = asyncHandler(async (req: AuthRequest, res: Response) => {
     const { prompt, targets } = await ReflectionPromptService.create(
       req.body as CreateReflectionPromptInput,

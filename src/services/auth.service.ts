@@ -2,11 +2,12 @@ import { avatarPublicPath, deleteUploadedFile } from '../middleware/upload';
 import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { signToken } from '../utils/jwt';
-import { toPublicUser } from '../utils/userSerializer';
+import { toNotificationPreferences, toPublicUser } from '../utils/userSerializer';
 import {
   ChangePasswordInput,
   LoginInput,
   RegisterInput,
+  UpdateNotificationPreferencesInput,
   UpdateProfileInput,
   UpdateSecurityInput,
 } from '../validators/auth.validator';
@@ -188,6 +189,31 @@ export class AuthService {
     if (input.loginAlertsEnabled !== undefined) {
       user.loginAlertsEnabled = input.loginAlertsEnabled;
     }
+
+    await user.save();
+    return toPublicUser(user);
+  }
+
+  static async updateNotificationPreferences(
+    userId: string,
+    input: UpdateNotificationPreferencesInput,
+  ) {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const current = toNotificationPreferences(user.notificationPreferences);
+    user.notificationPreferences = {
+      pushEnabled: input.pushEnabled ?? current.pushEnabled,
+      dailyRemindersEnabled:
+        input.dailyRemindersEnabled ?? current.dailyRemindersEnabled,
+      newChapterAlertsEnabled:
+        input.newChapterAlertsEnabled ?? current.newChapterAlertsEnabled,
+      messageOfDayEnabled: input.messageOfDayEnabled ?? current.messageOfDayEnabled,
+      promptAlertsEnabled: input.promptAlertsEnabled ?? current.promptAlertsEnabled,
+    };
 
     await user.save();
     return toPublicUser(user);

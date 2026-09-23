@@ -12,6 +12,8 @@ export interface IChapter {
   imageUrl?: string;
   /** Typed chapter body for readable / both books. */
   textContent?: string;
+  /** Optional per-chapter PDF for readable / both books. */
+  pdfUrl?: string;
   order: number;
 }
 
@@ -23,8 +25,6 @@ export interface IBook extends Document {
   description: string;
   shortBlurb?: string;
   coverUrl?: string;
-  /** Optional full-book PDF for readable / both books. */
-  pdfUrl?: string;
   /** Price in major currency units (e.g. 19.99). Stored for Stripe-ready checkout later. */
   price: number;
   currency: string;
@@ -72,6 +72,11 @@ const chapterSchema = new Schema<IChapter>(
       default: '',
       trim: true,
     },
+    pdfUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     order: {
       type: Number,
       required: true,
@@ -106,10 +111,6 @@ const bookSchema = new Schema<IBook>(
       maxlength: 500,
     },
     coverUrl: {
-      type: String,
-      trim: true,
-    },
-    pdfUrl: {
       type: String,
       trim: true,
     },

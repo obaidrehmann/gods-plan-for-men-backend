@@ -141,6 +141,10 @@ export class ReflectionPromptService {
     return ReflectionPrompt.find().sort({ order: 1, createdAt: -1 });
   }
 
+  static async listActive() {
+    return ReflectionPrompt.find({ isActive: true }).sort({ order: 1, createdAt: -1 });
+  }
+
   static async getById(id: string) {
     const prompt = await ReflectionPrompt.findById(id);
 

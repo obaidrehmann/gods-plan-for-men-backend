@@ -2,6 +2,22 @@ import bcrypt from 'bcryptjs';
 import { Document, Schema, model } from 'mongoose';
 import { UserRole } from '../types';
 
+export type NotificationPreferences = {
+  pushEnabled: boolean;
+  dailyRemindersEnabled: boolean;
+  newChapterAlertsEnabled: boolean;
+  messageOfDayEnabled: boolean;
+  promptAlertsEnabled: boolean;
+};
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  pushEnabled: true,
+  dailyRemindersEnabled: true,
+  newChapterAlertsEnabled: true,
+  messageOfDayEnabled: false,
+  promptAlertsEnabled: false,
+};
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -15,6 +31,7 @@ export interface IUser extends Document {
   avatarUrl?: string | null;
   passwordChangedAt: Date;
   loginAlertsEnabled: boolean;
+  notificationPreferences: NotificationPreferences;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -86,6 +103,28 @@ const userSchema = new Schema<IUser>(
     loginAlertsEnabled: {
       type: Boolean,
       default: false,
+    },
+    notificationPreferences: {
+      pushEnabled: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFERENCES.pushEnabled,
+      },
+      dailyRemindersEnabled: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFERENCES.dailyRemindersEnabled,
+      },
+      newChapterAlertsEnabled: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFERENCES.newChapterAlertsEnabled,
+      },
+      messageOfDayEnabled: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFERENCES.messageOfDayEnabled,
+      },
+      promptAlertsEnabled: {
+        type: Boolean,
+        default: DEFAULT_NOTIFICATION_PREFERENCES.promptAlertsEnabled,
+      },
     },
   },
   {

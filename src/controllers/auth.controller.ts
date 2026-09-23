@@ -8,6 +8,7 @@ import {
   ChangePasswordInput,
   LoginInput,
   RegisterInput,
+  UpdateNotificationPreferencesInput,
   UpdateProfileInput,
   UpdateSecurityInput,
 } from '../validators/auth.validator';
@@ -85,4 +86,18 @@ export class AuthController {
     );
     return sendSuccess(res, user, 'Security settings updated successfully');
   });
+
+  static updateNotificationPreferences = asyncHandler(
+    async (req: AuthRequest, res: Response) => {
+      if (!req.user) {
+        throw new AppError('Authentication required', 401);
+      }
+
+      const user = await AuthService.updateNotificationPreferences(
+        req.user.id,
+        req.body as UpdateNotificationPreferencesInput,
+      );
+      return sendSuccess(res, user, 'Notification preferences updated successfully');
+    },
+  );
 }

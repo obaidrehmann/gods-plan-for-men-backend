@@ -68,6 +68,11 @@ API base URL: `http://localhost:3000/api/v1`
 - `POST /api/v1/auth/me/avatar` — multipart avatar upload
 - `PATCH /api/v1/auth/me/password` — `{ currentPassword, newPassword }`
 - `PATCH /api/v1/auth/me/security` — `{ loginAlertsEnabled }`
+- `PATCH /api/v1/auth/me/notifications` — notification preference flags (`pushEnabled`, `dailyRemindersEnabled`, `newChapterAlertsEnabled`, `messageOfDayEnabled`, `promptAlertsEnabled`)
+- `GET /api/v1/contact-settings` — public contact & support Reach Us info
+- `PATCH /api/v1/contact-settings` — admin update `{ email, phone, hours, replyTime }`
+- `GET /api/v1/terms-settings` — public terms & conditions
+- `PATCH /api/v1/terms-settings` — admin update `{ lastUpdatedLabel, sections: [{ title, body }] }`
 
 ### Books
 - `GET /api/v1/books` — published books

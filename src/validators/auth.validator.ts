@@ -47,8 +47,29 @@ export const updateSecuritySchema = z
     message: 'At least one security field is required',
   });
 
+export const updateNotificationPreferencesSchema = z
+  .object({
+    pushEnabled: z.boolean().optional(),
+    dailyRemindersEnabled: z.boolean().optional(),
+    newChapterAlertsEnabled: z.boolean().optional(),
+    messageOfDayEnabled: z.boolean().optional(),
+    promptAlertsEnabled: z.boolean().optional(),
+  })
+  .refine(
+    (data) =>
+      data.pushEnabled !== undefined ||
+      data.dailyRemindersEnabled !== undefined ||
+      data.newChapterAlertsEnabled !== undefined ||
+      data.messageOfDayEnabled !== undefined ||
+      data.promptAlertsEnabled !== undefined,
+    { message: 'At least one notification preference is required' },
+  );
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type UpdateSecurityInput = z.infer<typeof updateSecuritySchema>;
+export type UpdateNotificationPreferencesInput = z.infer<
+  typeof updateNotificationPreferencesSchema
+>;

@@ -12,6 +12,8 @@ function serializeChapter(chapter: IChapter, includeReadableContent: boolean) {
     imageUrl: chapter.imageUrl ? toStoredMediaPath(chapter.imageUrl) ?? chapter.imageUrl : '',
     textContent: includeReadableContent ? chapter.textContent ?? '' : '',
     hasTextContent: Boolean(chapter.textContent?.trim()),
+    pdfUrl: includeReadableContent ? toStoredMediaPath(chapter.pdfUrl) : null,
+    hasPdf: Boolean(chapter.pdfUrl?.trim()),
     order: chapter.order,
   };
 }
@@ -41,8 +43,6 @@ export function serializeBook(book: IBook, options: SerializeBookOptions = {}) {
     description: book.description,
     shortBlurb: book.shortBlurb ?? '',
     coverUrl: toStoredMediaPath(book.coverUrl),
-    pdfUrl: includeReadableContent ? toStoredMediaPath(book.pdfUrl) : null,
-    hasPdf: Boolean(book.pdfUrl),
     price: Number(book.price ?? 0),
     currency: (book.currency ?? 'USD').toUpperCase(),
     mediaType: book.mediaType ?? 'both',

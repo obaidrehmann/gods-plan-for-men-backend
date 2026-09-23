@@ -40,11 +40,6 @@ const avatarStorage = multer.diskStorage({
   filename: (_req, file, cb) => cb(null, uniqueName(file.originalname)),
 });
 
-const pdfStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, PDF_DIR),
-  filename: (_req, file, cb) => cb(null, uniqueName(file.originalname)),
-});
-
 const imageMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/jpg']);
 const audioMimeTypes = new Set([
   'audio/mpeg',
@@ -89,6 +84,10 @@ const chapterMediaStorage = multer.diskStorage({
       cb(null, CHAPTERS_DIR);
       return;
     }
+    if (file.fieldname === 'pdf') {
+      cb(null, PDF_DIR);
+      return;
+    }
     cb(null, AUDIO_DIR);
   },
   filename: (_req, file, cb) => cb(null, uniqueName(file.originalname)),
@@ -116,6 +115,15 @@ export const uploadChapterMedia = multer({
       return;
     }
 
+    if (file.fieldname === 'pdf') {
+      if (!pdfMimeTypes.has(file.mimetype)) {
+        cb(new AppError('Chapter file must be a PDF', 400));
+        return;
+      }
+      cb(null, true);
+      return;
+    }
+
     cb(new AppError('Unexpected file field', 400));
   },
 });
@@ -126,18 +134,6 @@ export const uploadAvatar = multer({
   fileFilter: (_req, file, cb) => {
     if (!imageMimeTypes.has(file.mimetype)) {
       cb(new AppError('Avatar must be a JPEG, PNG, or WebP image', 400));
-      return;
-    }
-    cb(null, true);
-  },
-});
-
-export const uploadPdf = multer({
-  storage: pdfStorage,
-  limits: { fileSize: 40 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!pdfMimeTypes.has(file.mimetype)) {
-      cb(new AppError('Book file must be a PDF', 400));
       return;
     }
     cb(null, true);

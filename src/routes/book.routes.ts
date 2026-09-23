@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { BookController } from '../controllers/book.controller';
 import { authenticate, authorize, optionalAuthenticate } from '../middleware/auth';
-import { uploadChapterMedia, uploadCover, uploadPdf } from '../middleware/upload';
+import { uploadChapterMedia, uploadCover } from '../middleware/upload';
 import { validate } from '../middleware/validate';
 import {
   bookIdParamSchema,
@@ -51,23 +51,6 @@ router.post(
   BookController.uploadCover,
 );
 
-router.post(
-  '/:id/pdf',
-  authenticate,
-  authorize('admin'),
-  validate(bookIdParamSchema, 'params'),
-  uploadPdf.single('pdf'),
-  BookController.uploadPdf,
-);
-
-router.delete(
-  '/:id/pdf',
-  authenticate,
-  authorize('admin'),
-  validate(bookIdParamSchema, 'params'),
-  BookController.removePdf,
-);
-
 router.delete(
   '/:id',
   authenticate,
@@ -84,6 +67,7 @@ router.post(
   uploadChapterMedia.fields([
     { name: 'audio', maxCount: 1 },
     { name: 'image', maxCount: 1 },
+    { name: 'pdf', maxCount: 1 },
   ]),
   validate(createChapterSchema),
   BookController.addChapter,
@@ -97,6 +81,7 @@ router.patch(
   uploadChapterMedia.fields([
     { name: 'audio', maxCount: 1 },
     { name: 'image', maxCount: 1 },
+    { name: 'pdf', maxCount: 1 },
   ]),
   validate(updateChapterSchema),
   BookController.updateChapter,

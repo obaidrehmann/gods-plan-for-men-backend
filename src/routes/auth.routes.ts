@@ -7,6 +7,7 @@ import {
   changePasswordSchema,
   loginSchema,
   registerSchema,
+  updateNotificationPreferencesSchema,
   updateProfileSchema,
   updateSecuritySchema,
 } from '../validators/auth.validator';
@@ -35,6 +36,12 @@ router.patch(
   authenticate,
   validate(updateSecuritySchema),
   AuthController.updateSecurity,
+);
+router.patch(
+  '/me/notifications',
+  authenticate,
+  validate(updateNotificationPreferencesSchema),
+  AuthController.updateNotificationPreferences,
 );
 
 export default router;

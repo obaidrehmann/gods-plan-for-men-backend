@@ -19,6 +19,12 @@ router.get(
 );
 
 router.get(
+  '/active',
+  authenticate,
+  ReflectionPromptController.listActive,
+);
+
+router.get(
   '/all',
   authenticate,
   authorize('admin'),
