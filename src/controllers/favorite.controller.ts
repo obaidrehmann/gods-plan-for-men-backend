@@ -58,8 +58,11 @@ export class FavoriteController {
 
     const favorites = await FavoriteService.listMine(req.user.id);
     const books = favorites
-      .map((favorite) => favorite.book)
-      .filter((book): book is IBook => Boolean(book && typeof book === 'object' && '_id' in book))
+      .map((favorite) => favorite.book as unknown)
+      .filter(
+        (book): book is IBook =>
+          Boolean(book && typeof book === 'object' && '_id' in book && 'title' in book),
+      )
       .map((book) => serializeBook(book, { isFavorite: true }));
 
     return sendSuccess(res, books, 'Favorites fetched successfully');
