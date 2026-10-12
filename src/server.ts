@@ -1,8 +1,15 @@
+import { webcrypto } from 'node:crypto';
 import http from 'http';
 import app from './app';
 import { connectDatabase } from './config/database';
 import { env } from './config/env';
 import { seedAdminUser } from './config/seedAdmin';
+
+// MongoDB driver uses global crypto.getRandomValues (Web Crypto).
+// Node 18 does not expose it on globalThis by default.
+if (typeof globalThis.crypto === 'undefined') {
+  globalThis.crypto = webcrypto as Crypto;
+}
 
 async function bootstrap(): Promise<void> {
   await connectDatabase();
