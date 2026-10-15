@@ -6,6 +6,7 @@ import {
   bookIdParamSchema,
   checkoutSessionParamSchema,
   createPurchaseSchema,
+  paymentIntentParamSchema,
 } from '../validators/purchase.validator';
 
 const router = Router();
@@ -17,6 +18,11 @@ router.use(authenticate);
 
 router.get('/sales', authorize('admin'), PurchaseController.sales);
 router.post('/checkout', validate(createPurchaseSchema), PurchaseController.checkout);
+router.get(
+  '/checkout/payment-intents/:paymentIntentId',
+  validate(paymentIntentParamSchema, 'params'),
+  PurchaseController.confirmPaymentIntent,
+);
 router.get(
   '/checkout/sessions/:sessionId',
   validate(checkoutSessionParamSchema, 'params'),

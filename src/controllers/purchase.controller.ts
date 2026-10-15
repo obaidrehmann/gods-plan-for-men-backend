@@ -36,15 +36,16 @@ function sendCheckout(res: Response, result: Awaited<ReturnType<typeof PurchaseS
     ? 'Book already purchased'
     : completed
       ? 'Book added to your library'
-      : 'Continue to Stripe Checkout';
+      : 'Enter your card to pay';
 
   return sendSuccess(
     res,
     {
       ...serializePurchase(result.purchase, result.book),
       alreadyOwned: result.alreadyOwned,
-      checkoutUrl: result.checkoutUrl,
-      sessionId: result.sessionId,
+      clientSecret: result.clientSecret,
+      publishableKey: result.publishableKey,
+      paymentIntentId: result.paymentIntentId,
     },
     message,
     result.alreadyOwned || completed ? 200 : 201,
@@ -70,6 +71,18 @@ export class PurchaseController {
       req.user.id,
       (req.body as CreatePurchaseInput).bookId,
     );
+    return sendCheckout(res, result);
+  });
+
+  static confirmPaymentIntent = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const paymentIntentId = Array.isArray(req.params.paymentIntentId)
+      ? req.params.paymentIntentId[0]
+      : req.params.paymentIntentId;
+    const result = await PurchaseService.confirmPaymentIntent(req.user.id, paymentIntentId);
     return sendCheckout(res, result);
   });
 

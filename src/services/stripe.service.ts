@@ -8,6 +8,19 @@ export function isStripeConfigured(): boolean {
   return env.STRIPE_SECRET_KEY.length > 0;
 }
 
+export function getPublishableKey(): string {
+  if (!env.STRIPE_PUBLISHABLE_KEY) {
+    throw new AppError(
+      'Stripe publishable key is not configured. Add STRIPE_PUBLISHABLE_KEY to the server environment.',
+      503,
+      undefined,
+      'STRIPE_NOT_CONFIGURED',
+    );
+  }
+
+  return env.STRIPE_PUBLISHABLE_KEY;
+}
+
 export function getStripe(): Stripe {
   if (!env.STRIPE_SECRET_KEY) {
     throw new AppError(

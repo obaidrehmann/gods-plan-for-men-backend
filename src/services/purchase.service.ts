@@ -5,8 +5,7 @@ import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { CreatePurchaseInput } from '../validators/purchase.validator';
 import {
-  checkoutCancelUrl,
-  checkoutReturnUrl,
+  getPublishableKey,
   getStripe,
   paymentIntentId,
   toMinorUnits,
@@ -18,8 +17,9 @@ export type CheckoutResult = {
   purchase: IPurchase;
   book: IBook;
   alreadyOwned: boolean;
-  checkoutUrl: string | null;
-  sessionId: string | null;
+  clientSecret: string | null;
+  publishableKey: string | null;
+  paymentIntentId: string | null;
 };
 
 export type SalesReport = {
@@ -108,8 +108,8 @@ export class PurchaseService {
   }
 
   /**
-   * Free titles are granted immediately. Paid titles open Stripe Checkout
-   * and stay pending until Stripe confirms the charge.
+   * Free titles are granted immediately. Paid titles return a PaymentIntent
+   * client secret for the in-app card sheet.
    */
   static async purchase(userId: string, input: CreatePurchaseInput) {
     return this.startCheckout(userId, input.bookId);
@@ -142,64 +142,62 @@ export class PurchaseService {
         purchase: existing,
         book,
         alreadyOwned: true,
-        checkoutUrl: null,
-        sessionId: existing.stripeCheckoutSessionId ?? null,
+        clientSecret: null,
+        publishableKey: null,
+        paymentIntentId: existing.stripePaymentIntentId ?? null,
       };
     }
 
-    if (existing.stripeCheckoutSessionId) {
-      const reusable = await this.reusableCheckoutUrl(existing.stripeCheckoutSessionId);
+    const publishableKey = getPublishableKey();
+
+    const stripe = getStripe();
+    const amount = toMinorUnits(book.price);
+    const currency = (book.currency || 'USD').toLowerCase();
+
+    if (existing.stripePaymentIntentId) {
+      const reusable = await this.reusablePaymentIntent(
+        existing.stripePaymentIntentId,
+        amount,
+        currency,
+      );
       if (reusable) {
         return {
           purchase: existing,
           book,
           alreadyOwned: false,
-          checkoutUrl: reusable.url,
-          sessionId: reusable.id,
+          clientSecret: reusable.clientSecret,
+          publishableKey,
+          paymentIntentId: reusable.id,
         };
       }
     }
 
-    const stripe = getStripe();
-    let session: Stripe.Checkout.Session;
+    let intent: Stripe.PaymentIntent;
 
     try {
-      session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        customer_email: user.email,
-        client_reference_id: existing.id,
-        success_url: checkoutReturnUrl(),
-        cancel_url: checkoutCancelUrl(),
+      intent = await stripe.paymentIntents.create({
+        amount,
+        currency,
+        automatic_payment_methods: { enabled: true },
+        receipt_email: user.email,
+        description: book.title.slice(0, 250),
         metadata: {
           userId,
           bookId: book.id,
           purchaseId: existing.id,
         },
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: (book.currency || 'USD').toLowerCase(),
-              unit_amount: toMinorUnits(book.price),
-              product_data: {
-                name: book.title.slice(0, 250),
-                description: `by ${book.author}`.slice(0, 500),
-              },
-            },
-          },
-        ],
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unable to start Stripe Checkout';
+        error instanceof Error ? error.message : 'Unable to start card payment';
       throw new AppError(message, 502);
     }
 
-    if (!session.url) {
-      throw new AppError('Stripe did not return a checkout URL', 502);
+    if (!intent.client_secret) {
+      throw new AppError('Stripe did not return a payment client secret', 502);
     }
 
-    existing.stripeCheckoutSessionId = session.id;
+    existing.stripePaymentIntentId = intent.id;
     existing.paymentMethod = 'stripe';
     existing.status = 'pending';
     existing.amount = book.price;
@@ -210,8 +208,9 @@ export class PurchaseService {
       purchase: existing,
       book,
       alreadyOwned: false,
-      checkoutUrl: session.url,
-      sessionId: session.id,
+      clientSecret: intent.client_secret,
+      publishableKey,
+      paymentIntentId: intent.id,
     };
   }
 
@@ -251,9 +250,93 @@ export class PurchaseService {
       purchase,
       book,
       alreadyOwned: purchase.status === 'completed',
-      checkoutUrl: session.url,
-      sessionId: session.id,
+      clientSecret: null,
+      publishableKey: null,
+      paymentIntentId: paymentIntentId(session),
     };
+  }
+
+  static async confirmPaymentIntent(
+    userId: string,
+    paymentIntentIdValue: string,
+  ): Promise<CheckoutResult> {
+    const stripe = getStripe();
+    let intent: Stripe.PaymentIntent;
+
+    try {
+      intent = await stripe.paymentIntents.retrieve(paymentIntentIdValue);
+    } catch {
+      throw new AppError('Payment not found', 404);
+    }
+
+    if (intent.metadata?.userId !== userId) {
+      throw new AppError('Payment not found', 404);
+    }
+
+    if (intent.status === 'succeeded') {
+      await this.fulfillPaymentIntent(intent);
+    }
+
+    const purchase = await Purchase.findOne({
+      user: userId,
+      stripePaymentIntentId: paymentIntentIdValue,
+    });
+
+    if (!purchase) {
+      throw new AppError('Payment not found', 404);
+    }
+
+    const book = await Book.findById(purchase.book);
+    if (!book) {
+      throw new AppError('Book not found', 404);
+    }
+
+    return {
+      purchase,
+      book,
+      alreadyOwned: purchase.status === 'completed',
+      clientSecret: null,
+      publishableKey: null,
+      paymentIntentId: intent.id,
+    };
+  }
+
+  static async fulfillPaymentIntent(intent: Stripe.PaymentIntent) {
+    const purchaseId = intent.metadata?.purchaseId;
+    if (!purchaseId) {
+      return;
+    }
+
+    const purchase = await Purchase.findById(purchaseId);
+    if (!purchase) {
+      return;
+    }
+
+    if (intent.metadata?.userId && purchase.user.toString() !== intent.metadata.userId) {
+      return;
+    }
+
+    if (intent.metadata?.bookId && purchase.book.toString() !== intent.metadata.bookId) {
+      return;
+    }
+
+    if (intent.status !== 'succeeded') {
+      return;
+    }
+
+    if (purchase.status === 'completed' || purchase.status === 'refunded') {
+      return;
+    }
+
+    purchase.status = 'completed';
+    purchase.paymentMethod = 'stripe';
+    purchase.amount = intent.amount_received
+      ? intent.amount_received / 100
+      : intent.amount / 100;
+    purchase.currency = (intent.currency || purchase.currency).toUpperCase();
+    purchase.stripePaymentIntentId = intent.id;
+    purchase.purchasedAt = new Date();
+    await purchase.save();
   }
 
   static async fulfillCheckoutSession(session: Stripe.Checkout.Session) {
@@ -414,11 +497,12 @@ export class PurchaseService {
       return {
         purchase: existing,
         book,
-        alreadyOwned: true,
-        checkoutUrl: null,
-        sessionId: null,
-      };
-    }
+      alreadyOwned: true,
+      clientSecret: null,
+      publishableKey: null,
+      paymentIntentId: null,
+    };
+  }
 
     const purchase = await Purchase.findOneAndUpdate(
       { user: userId, book: book._id },
@@ -442,8 +526,9 @@ export class PurchaseService {
       purchase,
       book,
       alreadyOwned: false,
-      checkoutUrl: null,
-      sessionId: null,
+      clientSecret: null,
+      publishableKey: null,
+      paymentIntentId: null,
     };
   }
 
@@ -459,7 +544,6 @@ export class PurchaseService {
       existing.currency = book.currency || 'USD';
       existing.paymentMethod = 'stripe';
       existing.status = 'pending';
-      existing.stripePaymentIntentId = null;
       await existing.save();
       return existing;
     }
@@ -496,11 +580,25 @@ export class PurchaseService {
     }
   }
 
-  private static async reusableCheckoutUrl(sessionId: string) {
+  private static async reusablePaymentIntent(
+    paymentIntentIdValue: string,
+    amount: number,
+    currency: string,
+  ) {
     try {
-      const session = await getStripe().checkout.sessions.retrieve(sessionId);
-      if (session.status === 'open' && session.url) {
-        return { id: session.id, url: session.url };
+      const intent = await getStripe().paymentIntents.retrieve(paymentIntentIdValue);
+      const reusable =
+        intent.status === 'requires_payment_method' ||
+        intent.status === 'requires_confirmation' ||
+        intent.status === 'requires_action';
+
+      if (
+        reusable &&
+        intent.client_secret &&
+        intent.amount === amount &&
+        intent.currency === currency
+      ) {
+        return { id: intent.id, clientSecret: intent.client_secret };
       }
     } catch {
       return null;

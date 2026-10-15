@@ -12,4 +12,8 @@ export const checkoutSessionParamSchema = z.object({
   sessionId: z.string().trim().min(8).max(255),
 });
 
+export const paymentIntentParamSchema = z.object({
+  paymentIntentId: z.string().trim().min(8).max(255),
+});
+
 export type CreatePurchaseInput = z.infer<typeof createPurchaseSchema>;
