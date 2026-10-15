@@ -33,6 +33,7 @@ export function serializePurchase(purchase: IPurchase, book?: IBook | null) {
     currency: purchase.currency,
     paymentMethod: purchase.paymentMethod,
     status: purchase.status,
+    stripeCheckoutSessionId: purchase.stripeCheckoutSessionId ?? null,
     purchasedAt: purchase.purchasedAt,
     createdAt: purchase.createdAt,
     book: bookDoc ? serializeBook(bookDoc, { isPurchased: true }) : undefined,

@@ -10,7 +10,9 @@ export interface IPurchase extends Document {
   currency: string;
   paymentMethod: PaymentMethod;
   status: PurchaseStatus;
-  /** Reserved for Stripe PaymentIntent id when Stripe is wired up. */
+  /** Stripe Checkout Session id (cs_...). */
+  stripeCheckoutSessionId?: string | null;
+  /** Stripe PaymentIntent id (pi_...) after Checkout succeeds. */
   stripePaymentIntentId?: string | null;
   purchasedAt: Date;
   createdAt: Date;
@@ -54,9 +56,12 @@ const purchaseSchema = new Schema<IPurchase>(
       enum: ['completed', 'pending', 'failed', 'refunded'],
       default: 'completed',
     },
+    stripeCheckoutSessionId: {
+      type: String,
+      trim: true,
+    },
     stripePaymentIntentId: {
       type: String,
-      default: null,
       trim: true,
     },
     purchasedAt: {
@@ -70,5 +75,7 @@ const purchaseSchema = new Schema<IPurchase>(
 );
 
 purchaseSchema.index({ user: 1, book: 1 }, { unique: true });
+purchaseSchema.index({ stripeCheckoutSessionId: 1 }, { unique: true, sparse: true });
+purchaseSchema.index({ status: 1, purchasedAt: -1 });
 
 export const Purchase = model<IPurchase>('Purchase', purchaseSchema);

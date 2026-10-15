@@ -1,16 +1,27 @@
 import { Router } from 'express';
 import { PurchaseController } from '../controllers/purchase.controller';
-import { authenticate } from '../middleware/auth';
+import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
   bookIdParamSchema,
+  checkoutSessionParamSchema,
   createPurchaseSchema,
 } from '../validators/purchase.validator';
 
 const router = Router();
 
+router.get('/checkout/return', PurchaseController.checkoutReturn);
+router.get('/checkout/cancel', PurchaseController.checkoutCancel);
+
 router.use(authenticate);
 
+router.get('/sales', authorize('admin'), PurchaseController.sales);
+router.post('/checkout', validate(createPurchaseSchema), PurchaseController.checkout);
+router.get(
+  '/checkout/sessions/:sessionId',
+  validate(checkoutSessionParamSchema, 'params'),
+  PurchaseController.confirmSession,
+);
 router.get('/', PurchaseController.listMine);
 router.post('/', validate(createPurchaseSchema), PurchaseController.create);
 router.get(

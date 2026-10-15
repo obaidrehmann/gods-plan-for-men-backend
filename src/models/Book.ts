@@ -25,7 +25,7 @@ export interface IBook extends Document {
   description: string;
   shortBlurb?: string;
   coverUrl?: string;
-  /** Price in major currency units (e.g. 19.99). Stored for Stripe-ready checkout later. */
+  /** Price in major currency units (e.g. 19.99). Paid titles use Stripe Checkout. */
   price: number;
   currency: string;
   /** How the book can be consumed in the app. */

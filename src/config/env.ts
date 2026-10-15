@@ -11,6 +11,8 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('7d'),
   CORS_ORIGIN: z.string().default('*'),
   PUBLIC_BASE_URL: z.string().url().default('http://127.0.0.1:3000'),
+  /** Secret key (sk_test_... or sk_live_...). Empty disables paid checkout. */
+  STRIPE_SECRET_KEY: z.string().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);

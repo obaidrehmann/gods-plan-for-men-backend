@@ -1,6 +1,6 @@
-# Gods Plan for Men — Backend
+# God’s Plan for Man — Backend
 
-Node.js + TypeScript + MongoDB API for the Gods Plan for Men mobile app and dashboard.
+Node.js + TypeScript + MongoDB API for the God’s Plan for Man mobile app and dashboard.
 
 ## Stack
 

@@ -1,6 +1,8 @@
 import {
   ContactSettings,
   DEFAULT_CONTACT_SETTINGS,
+  LEGACY_PLACEHOLDER_PHONES,
+  LEGACY_TEMPLATE_SUPPORT_EMAIL,
 } from '../models/ContactSettings';
 import { UpdateContactSettingsInput } from '../validators/contactSettings.validator';
 
@@ -15,6 +17,22 @@ export class ContactSettingsService {
         key: SETTINGS_KEY,
         ...DEFAULT_CONTACT_SETTINGS,
       });
+    } else {
+      let replacedPlaceholder = false;
+
+      if (settings.email.trim().toLowerCase() === LEGACY_TEMPLATE_SUPPORT_EMAIL) {
+        settings.email = DEFAULT_CONTACT_SETTINGS.email;
+        replacedPlaceholder = true;
+      }
+
+      if (LEGACY_PLACEHOLDER_PHONES.includes(settings.phone.trim())) {
+        settings.phone = DEFAULT_CONTACT_SETTINGS.phone;
+        replacedPlaceholder = true;
+      }
+
+      if (replacedPlaceholder) {
+        await settings.save();
+      }
     }
 
     return settings;

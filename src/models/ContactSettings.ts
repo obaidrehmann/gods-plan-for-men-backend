@@ -7,9 +7,15 @@ export type ContactSettingsFields = {
   replyTime: string;
 };
 
+export const LEGACY_TEMPLATE_SUPPORT_EMAIL = 'support@calmcompanion.com';
+export const LEGACY_PLACEHOLDER_PHONES = [
+  '+1 (800) 555-0142',
+  '+1 (555) 123-4567',
+];
+
 export const DEFAULT_CONTACT_SETTINGS: ContactSettingsFields = {
-  email: 'support@calmcompanion.com',
-  phone: '+1 (800) 555-0142',
+  email: 'support@godsplanforman.com',
+  phone: '123456789',
   hours: 'Mon–Fri, 9:00 AM – 6:00 PM EST',
   replyTime: 'Usually replies within a day',
 };
